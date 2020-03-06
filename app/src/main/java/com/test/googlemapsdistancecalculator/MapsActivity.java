@@ -1,12 +1,16 @@
 package com.test.googlemapsdistancecalculator;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,14 +18,19 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -36,7 +45,12 @@ import retrofit.GsonConverterFactory;
 import retrofit.Response;
 import retrofit.Retrofit;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements
+        OnMapReadyCallback,
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        GoogleMap.OnMarkerDragListener,
+        GoogleMap.OnMapLongClickListener {
 
     private GoogleMap mMap;
     LatLng origin;
@@ -44,13 +58,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ArrayList<LatLng> MarkerPoints;
     TextView ShowDistanceDuration;
     Polyline line;
+    private double longitude;
+    private double latitude;
+    GoogleApiClient googleApiClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
-        ShowDistanceDuration = (TextView) findViewById(R.id.show_distance_time);
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .addApi(AppIndex.API).build();
+
+        ShowDistanceDuration = findViewById(R.id.show_distance_time);
 
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkLocationPermission();
@@ -87,12 +110,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
         // Add a marker in Sydney and move the camera
-        LatLng Model_Town = new LatLng(28.7158727, 77.1910738);
-        mMap.addMarker(new MarkerOptions().position(Model_Town).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(Model_Town));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+        //LatLng Model_Town = new LatLng(28.7158727, 77.1910738);
+        //mMap.addMarker(new MarkerOptions().position(Model_Town).title("Marker in Sydney"));
+        //mMap.moveCamera(CameraUpdateFactory.newLatLng(Model_Town));
+        //mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
 
         // Setting onclick event listener for the map
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
@@ -117,10 +139,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 // Setting the position of the marker
                 options.position(point);
 
-                /**
-                 * For the start location, the color of marker is GREEN and
-                 * for the end location, the color of marker is RED.
-                 */
                 if (MarkerPoints.size() == 1) {
                     options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                 } else if (MarkerPoints.size() == 2) {
@@ -140,7 +158,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-        Button btnDriving = (Button) findViewById(R.id.btnDriving);
+        Button btnDriving = findViewById(R.id.btnDriving);
         btnDriving.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -148,13 +166,129 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-        Button btnWalk = (Button) findViewById(R.id.btnWalk);
+        Button btnWalk = findViewById(R.id.btnWalk);
         btnWalk.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 build_retrofit_and_get_response("walking");
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        googleApiClient.connect();
+        super.onStart();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Maps Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.test.googlemapsdistancecalculator/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(googleApiClient, viewAction);
+    }
+
+    @Override
+    protected void onStop() {
+        googleApiClient.disconnect();
+        super.onStop();
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Maps Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.example.googlemapcalculator/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(googleApiClient, viewAction);
+    }
+
+    private void getCurrentLocation() {
+        mMap.clear();
+        //Creating a location object
+        Location location = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
+        if (location != null) {
+            //Getting longitude and latitude
+            longitude = location.getLongitude();
+            latitude = location.getLatitude();
+
+            //moving the map to location
+            moveMap();
+        }
+    }
+    private void moveMap() {
+        //Creating a LatLng Object to store Coordinates
+        LatLng latLng = new LatLng(latitude, longitude);
+
+        //Adding marker to map
+//        mMap.addMarker(new MarkerOptions()
+//                .position(latLng) //setting position
+//                .draggable(true) //Making the marker draggable
+//                .title("Current Location")); //Adding a title
+
+        //Moving the camera
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+
+        //Animating the camera
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(16));
+
+    }
+
+    public void onConnected(Bundle bundle) {
+        getCurrentLocation();
+    }
+
+
+    public void onConnectionSuspended(int i) {
+
+    }
+
+
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+
+    public void onMapLongClick(LatLng latLng) {
+        //Clearing all the markers
+        mMap.clear();
+        //Adding a new marker to the current pressed position
+        mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .draggable(true));
+
+        latitude = latLng.latitude;
+        longitude = latLng.longitude;
+    }
+
+
+    public void onMarkerDragStart(Marker marker) {
+
+    }
+
+
+    public void onMarkerDrag(Marker marker) {
+
+    }
+
+
+    public void onMarkerDragEnd(Marker marker) {
+        //Getting the coordinates
+        latitude = marker.getPosition().latitude;
+        longitude = marker.getPosition().longitude;
+
+        //Moving the map
+        moveMap();
     }
 
     private void build_retrofit_and_get_response(String type) {
@@ -171,6 +305,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Call<Example> call = service.getDistanceDuration("metric", origin.latitude + "," + origin.longitude,dest.latitude + "," + dest.longitude, type);
 
         call.enqueue(new Callback<Example>() {
+            @SuppressLint("SetTextI18n")
             @Override
             public void onResponse(Response<Example> response, Retrofit retrofit) {
 
@@ -208,7 +343,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private List<LatLng> decodePoly(String encoded) {
-        List<LatLng> poly = new ArrayList<LatLng>();
+        List<LatLng> poly = new ArrayList<>();
         int index = 0, len = encoded.length();
         int lat = 0, lng = 0;
 

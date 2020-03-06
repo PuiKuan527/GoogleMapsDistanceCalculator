@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Example {
+
     @SerializedName("routes")
     @Expose
     private List<Route> routes = new ArrayList<>();
