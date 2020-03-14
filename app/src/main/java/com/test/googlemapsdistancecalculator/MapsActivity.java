@@ -222,6 +222,13 @@ public class MapsActivity extends FragmentActivity implements
             longitude = location.getLongitude();
             latitude = location.getLatitude();
 
+            mMap.clear();
+            LatLng gps = new LatLng(location.getLatitude(), location.getLongitude());
+            mMap.addMarker(new MarkerOptions()
+                    .position(gps)
+                    .title("Current Position"));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 12));
+
             //moving the map to location
             moveMap();
         }
